@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>计算机专业课智能学习助手 - 完整版</title>
+    <link rel="stylesheet" href="all.css">
+</head>
+
+<body>
+
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <h2>智能助手</h2>
+        <button class="nav-btn active" onclick="switchTab('page1')">1. 基础概念问答</button>
+        <button class="nav-btn" onclick="switchTab('page2')">2. 文法推导与树对比</button>
+        <button class="nav-btn" onclick="switchTab('page3')">3. 二义性检测</button>
+        <button class="nav-btn" onclick="switchTab('page4')">4. 知识点速查</button>
+    </nav>
+
+    <div class="container">
+
+        <!-- ================= 第 1 页: 继承用户的原始应用 ================= -->
+        <div id="page1" class="page-section active">
+            <h1>计算机专业课智能学习助手</h1>
+            <p class="subtitle">支持学科：数据结构、计算机组成原理、编译原理</p>
+
+            <div class="input-group">
+                <input type="text" id="questionInput" placeholder="请输入你的问题，例如：栈和队列之间有什么关系？" value="栈和队列之间有什么关系？">
+                <button onclick="processQuestion()">提交解析</button>
+            </div>
+
+            <div class="quick-answer" id="quickAnswerBox">
+                <div class="quick-answer-title">即时答案</div>
+                <div id="quickAnswerText">请输入问题并点击“提交解析”，答案会优先展示在这里。</div>
+            </div>
+
+            <div id="output" style="display: none;">
+                <div class="panel">
+                    <h3>1. 词汇过滤与句型判定</h3>
+                    <p id="extractedWords"></p>
+                </div>
+
+                <div class="panel">
+                    <h3>2. 句型推导过程 (EBNF)</h3>
+                    <div id="derivationSteps"></div>
+                </div>
+
+                <div class="panel" style="overflow-x: auto;">
+                    <h3>3. 语法树可视化</h3>
+                    <div class="tree" id="syntaxTree"></div>
+                </div>
+
+                <div class="panel">
+                    <h3>4. 识别的文法四元组子集</h3>
+                    <p><strong>V_T (终结符):</strong> <span id="vtSet"></span></p>
+                    <p><strong>V_N (非终结符):</strong> <span id="vnSet"></span></p>
+                    <p><strong>P (产生式):</strong></p>
+                    <pre id="pSet" style="background: #2d2d2d; color:#fff; padding:10px; border-radius:5px;"></pre>
+                </div>
+
+                <div class="panel" style="border-left-color: #27ae60;">
+                    <h3>5. 智能问答结果 (基于 JSON 知识库遍历)</h3>
+                    <div id="answerOutput" style="font-size: 16px; font-weight: bold; color: #27ae60;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= 第 2 页: 最左/最右推导与双树对比 ================= -->
+        <div id="page2" class="page-section">
+            <h1 style="color:var(--primary)">文法推导与语法树生成器</h1>
+
+            <!-- 上半部分：通用文法 -->
+            <div class="panel" style="border-left-color: #8e44ad; background: #fdfefe;">
+                <h3 style="color:#8e44ad;">【功能 A】基于通用有穷文法的推导</h3>
+                <label><b>输入有穷文法 ( -> 分隔左右，| 分隔候选 )</b></label>
+                <textarea id="gramInput" rows="3">E -> E + T | T&#10;T -> T * F | F&#10;F -> ( E ) | id</textarea>
+
+                <div class="input-group" style="margin-top: 15px;">
+                    <input type="text" id="targetStr" placeholder="目标句子（用空格隔开）" value="id + id * id">
+                    <button onclick="runGeneralDerivation('left')" style="background-color: #8e44ad;">最左推导</button>
+                    <button onclick="runGeneralDerivation('right')" style="background-color: #9b59b6;">最右推导</button>
+                </div>
+
+                <div id="genDerivOutput" style="display: none; margin-top: 15px;">
+                    <p><b>推导步骤：</b></p>
+                    <div id="genDerivSteps"
+                        style="font-family: monospace; background:#eee; padding:10px; border-radius:5px;"></div>
+                    <p><b>文本缩进式语法树：</b></p>
+                    <pre class="console-tree" id="genConsoleTree"></pre>
+                </div>
+            </div>
+
+            <!-- 下半部分：提问系统特定文法 -->
+            <div class="panel" style="border-left-color: #e67e22; background: #fffaf0;">
+                <h3 style="color:#d35400;">【功能 B】基于本系统问题的最左/最右推导对比演示</h3>
+                <p style="font-size: 14px; color: #666;">测试基于自然语言提取的句子，展示 AST 并在两侧对比不同样式语法的展示效果。</p>
+                <div class="input-group">
+                    <input type="text" id="nlQuestionInput" placeholder="请输入提问（例：词法分析和语法分析）" value="词法分析和语法分析的推导延续性">
+                    <button onclick="runNLDerivation('left')" style="background-color: #d35400;">生成最左推导演示</button>
+                    <button onclick="runNLDerivation('right')" style="background-color: #e67e22;">生成最右推导演示</button>
+                </div>
+
+                <div id="nlDerivOutput" style="display: none; margin-top: 15px;">
+                    <div style="background: #fdf2e9; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+                        <b>动态生成推导步骤 (EBNF)：</b><br><br>
+                        <div id="nlSteps"
+                            style="font-family: monospace; font-size:15px; color:#c0392b; line-height: 1.8;"></div>
+                    </div>
+
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                        <div
+                            style="flex: 1; min-width: 300px; background: #fff; border:1px solid #ddd; padding:10px; border-radius:5px;">
+                            <h4 style="text-align: center; color: #7f8c8d;">样式 1：控制台文本缩进树</h4>
+                            <pre class="console-tree" id="nlTextTree" style="min-height: 200px;"></pre>
+                        </div>
+                        <div
+                            style="flex: 1; min-width: 300px; background: #fff; border:1px solid #ddd; padding:10px; border-radius:5px;">
+                            <h4 style="text-align: center; color: #7f8c8d;">样式 2：CSS 可视化图形树</h4>
+                            <div class="tree" id="nlCssTree"
+                                style="min-height: 200px; display:flex; justify-content:center; align-items:center;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= 第 3 页: 二义性检测 ================= -->
+        <div id="page3" class="page-section">
+            <h1>文法二义性自动检测</h1>
+            <p style="color: #666; font-size: 14px; text-align:center;">针对经典算术表达式的二义性验证。系统会尝试搜索两套不同的最左推导。</p>
+
+            <div class="panel">
+                <textarea id="ambiGrammar" rows="2">E -> E + E | E * E | ( E ) | id</textarea>
+                <div class="input-group" style="margin-top: 15px;">
+                    <input type="text" id="ambiTarget" value="id + id * id">
+                    <button onclick="detectAmbiguity()" style="background: #c0392b;">检测双重推导</button>
+                </div>
+            </div>
+
+            <div id="ambiOutput" style="display: none; margin-top: 20px;">
+                <div id="ambiAlert"
+                    style="padding: 15px; border-radius: 5px; margin-bottom: 15px; font-weight: bold; text-align:center;">
+                </div>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;" id="ambiTreesDiv">
+                    <div class="panel" style="flex: 1; min-width: 300px; border-left-color:#e74c3c;">
+                        <h3>推导树 A</h3>
+                        <div id="ambiSteps1" style="font-size: 13px; color:#555; margin-bottom: 10px;"></div>
+                        <pre class="console-tree" id="ambiTree1"></pre>
+                    </div>
+                    <div class="panel" style="flex: 1; min-width: 300px; border-left-color:#e74c3c;">
+                        <h3>推导树 B (二义性)</h3>
+                        <div id="ambiSteps2" style="font-size: 13px; color:#555; margin-bottom: 10px;"></div>
+                        <pre class="console-tree" id="ambiTree2"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= 第 4 页: 知识点速查 ================= -->
+        <div id="page4" class="page-section">
+            <h1>核心知识点速查字典</h1>
+            <input type="text" id="kbSearch" placeholder="输入关键字搜索（如：流水线、哈希表、LL文法）..." onkeyup="filterKB()"
+                style="width: 100%; padding: 15px; border: 2px solid var(--primary); border-radius: 25px; outline: none; font-size: 16px; margin-bottom: 20px; box-sizing: border-box;">
+            <div class="kb-toolbar" id="kbToolbar"></div>
+            <div class="kb-meta" id="kbMeta"></div>
+            <div class="kb-grid" id="kbGrid"></div>
+        </div>
+
+    </div>
+
+    <!-- ================= JavaScript 核心逻辑 ================= -->
+    <script>
+        /* ------------------ 导航栏切换 ------------------ */
+        function switchTab(tabId) {
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+            if (tabId === 'page4') filterKB();
+        }
+
+        /* ==================== 继承第一页的 JS 变量和逻辑 ==================== */
+        const dict = {
+            subject: {},
+            relation: ["关系", "关联", "像", "相关性", "有关", "比", "更"],
+            derivation: ["推导", "怎么从", "到", "延续性", "转化", "变成", "演化"]
+        };
+        let knowledgeBase = null;
+
+        function normalizeText(text) {
+            return String(text || "").toLowerCase()
+                .replace(/[\u3000]/g, " ")
+                .replace(/[？?！!。，“”,、；;：:（）()【】\[\]{}]/g, " ")
+                .replace(/\s+/g, " ").trim();
+        }
+
+        function safeJsonParse(rawText) {
+            const cleaned = rawText.replace(/,\s*([}\]])/g, "$1");
+            return JSON.parse(cleaned);
+        }
+
+        function buildSubjectDictFromKnowledge(data) {
+            const subjectDict = {};
+            for (const [subject, sections] of Object.entries(data || {})) {
+                const words = new Set([subject]);
+                for (const sectionData of Object.values(sections || {})) {
+                    if (sectionData && typeof sectionData === "object") {
+                        Object.keys(sectionData).forEach(k => words.add(k));
+                    }
+                }
+                subjectDict[subject] = Array.from(words);
+            }
+            dict.subject = subjectDict;
+        }
+
+        async function loadKnowledgeBase() {
+            if (knowledgeBase) return knowledgeBase;
+            const response = await fetch("./course_cat.json", { cache: "no-store" });
+            if (!response.ok) throw new Error(`加载 course_cat.json 失败: HTTP ${response.status}`);
+            const raw = await response.text();
+            knowledgeBase = safeJsonParse(raw);
+            buildSubjectDictFromKnowledge(knowledgeBase);
+            return knowledgeBase;
+        }
+
+        function resolveCategory(extractedSubjects, extractedRels, extractedDerivs) {
+            const count = extractedSubjects.length;
+            if (count <= 1) return { categoryName: "<对于单个词的解释>", specificCategoryRule: "<对于单个词的解释> -> <只识别到一个词> (count=1)" };
+            if (extractedDerivs.length > 0) return { categoryName: "<词与词的推导>", specificCategoryRule: `<词与词的推导> -> <识别到两个及以上> & \"${extractedDerivs[0]}\"` };
+            return { categoryName: "<词与词的关联>", specificCategoryRule: `<词与词的关联> -> <识别到两个及以上> & \"${extractedRels[0] || "关系"}\"` };
+        }
+
+        function findBestAnswer(kb, subjectName, category, subjectTerms) {
+            const subjectData = kb?.[subjectName] || {};
+            const categoryKey = category.replace(/[<>]/g, "");
+            const section = subjectData?.[categoryKey] || {};
+            if (categoryKey === "对于单个词的解释") {
+                for (const term of subjectTerms) if (section[term]) return section[term];
+            }
+            if ((categoryKey === "词与词的关联" || categoryKey === "词与词的推导") && subjectTerms.length >= 2) {
+                for (let i = 0; i < subjectTerms.length; i++) {
+                    for (let j = i + 1; j < subjectTerms.length; j++) {
+                        if (section[`${subjectTerms[i]}-${subjectTerms[j]}`]) return section[`${subjectTerms[i]}-${subjectTerms[j]}`];
+                        if (section[`${subjectTerms[j]}-${subjectTerms[i]}`]) return section[`${subjectTerms[j]}-${subjectTerms[i]}`];
+                    }
+                }
+            }
+            const singleSection = subjectData?.["对于单个词的解释"] || {};
+            for (const term of subjectTerms) if (singleSection[term]) return singleSection[term];
+            const firstSection = Object.values(subjectData).find(v => v && typeof v === "object");
+            if (firstSection) {
+                const firstAnswer = Object.values(firstSection)[0];
+                if (typeof firstAnswer === "string" && firstAnswer.trim()) return firstAnswer;
+            }
+            return "未找到对应的知识库解答。";
+        }
+
+        async function processQuestion() {
+            const input = document.getElementById("questionInput").value;
+            const quickAnswerText = document.getElementById("quickAnswerText");
+            document.getElementById("output").style.display = "block";
+            try {
+                await loadKnowledgeBase();
+            } catch (error) {
+                const failText = `知识库加载失败：${error.message} (注意：这需要同级目录下有 course_cat.json 文件)`;
+                quickAnswerText.innerText = failText;
+                document.getElementById("answerOutput").innerText = failText;
+                return;
+            }
+
+            const normalizedInput = normalizeText(input);
+            let extractedSubjects = [], extractedRels = [], extractedDerivs = [], subjectHits = {}, matchedSubjectName = "其他相关知识";
+
+            for (const [subj, words] of Object.entries(dict.subject)) {
+                words.forEach(word => {
+                    if (normalizedInput.includes(normalizeText(word))) { extractedSubjects.push(word); subjectHits[subj] = (subjectHits[subj] || 0) + 1; }
+                });
+            }
+            const bestSubject = Object.entries(subjectHits).sort((a, b) => b[1] - a[1])[0];
+            if (bestSubject) matchedSubjectName = bestSubject[0];
+
+            dict.relation.forEach(w => { if (normalizedInput.includes(normalizeText(w))) extractedRels.push(w); });
+            dict.derivation.forEach(w => { if (normalizedInput.includes(normalizeText(w))) extractedDerivs.push(w); });
+
+            extractedSubjects = Array.from(new Set(extractedSubjects)); extractedRels = Array.from(new Set(extractedRels)); extractedDerivs = Array.from(new Set(extractedDerivs));
+            const count = extractedSubjects.length;
+
+            if (count === 0) {
+                const hintText = "未识别到专业词汇，请尝试输入如“词法分析是什么”或“栈和队列的关系”。";
+                quickAnswerText.innerText = hintText;
+                document.getElementById("answerOutput").innerText = hintText;
+                return;
+            }
+            const { categoryName, specificCategoryRule } = resolveCategory(extractedSubjects, extractedRels, extractedDerivs);
+            const allExtractedWords = [...extractedSubjects, ...extractedRels, ...extractedDerivs];
+
+            document.getElementById("extractedWords").innerHTML = `<b>提取的词汇 (V_T):</b> [${allExtractedWords.join(", ")}]<br><span style="color: green;">声明：该句子在提问系统文法下被识别为合法简单句子。包含 ${count} 个专业名词。</span>`;
+            document.getElementById("derivationSteps").innerHTML = [`S => <Question>`, `=> <类别> & <学科>`, `=> ${categoryName} & <${matchedSubjectName}>`, `=> [解析规则: ${specificCategoryRule}] & [学科词汇: ${extractedSubjects.join(", ")}]`, `=> 终结符串: ${allExtractedWords.join(" ")}`].map(d => `<code>${d}</code>`).join("<br>↓<br>");
+
+            // 第一页的树
+            document.getElementById("syntaxTree").innerHTML = `<ul><li><span>S (&lt;Question&gt;)</span><ul><li><span>&lt;类别&gt;</span><ul><li><span>${categoryName.replace('<', '&lt;').replace('>', '&gt;')}</span><ul>${categoryName === '<对于单个词的解释>' ? '<li><span>count = 1</span></li>' : `<li><span>count >= 2</span></li><li><span>"${extractedRels[0] || extractedDerivs[0] || '关系'}"</span></li>`}</ul></li></ul></li><li><span>&lt;学科&gt;</span><ul><li><span>&lt;${matchedSubjectName}&gt;</span><ul>${extractedSubjects.map(s => `<li><span>"${s}"</span></li>`).join("")}</ul></li></ul></li></ul></li></ul>`;
+
+            document.getElementById("vtSet").innerText = `{ ${allExtractedWords.map(w => `"${w}"`).join(", ")}, count=${count} }`;
+            document.getElementById("vnSet").innerText = `{ <Question>, <类别>, <学科>, ${categoryName}, <${matchedSubjectName}> }`;
+            document.getElementById("pSet").innerText = ["S -> <Question>", "<Question> -> <类别> & <学科>", `<类别> -> ${categoryName}`, `<学科> -> <${matchedSubjectName}>`, specificCategoryRule].join("\n");
+
+            let answer = findBestAnswer(knowledgeBase, matchedSubjectName, categoryName, extractedSubjects);
+            if (answer === "未找到对应的知识库解答。" && knowledgeBase["其他相关知识"]) answer = findBestAnswer(knowledgeBase, "其他相关知识", "<对于单个词的解释>", extractedSubjects);
+            quickAnswerText.innerText = answer;
+            document.getElementById("answerOutput").innerText = answer;
+        }
+
+        window.addEventListener("DOMContentLoaded", async () => { try { await loadKnowledgeBase(); } catch (error) { console.warn("第一页知识库预加载失败，需检查json：", error); } });
+
+        /* ==================== 第二页 & 第三页: 通用文法解析器核心 ==================== */
+        function parseGrammar(text) {
+            let rules = {}, start = null;
+            let lines = text.split('\n');
+            for (let line of lines) {
+                line = line.trim(); if (!line) continue;
+                let parts = line.split('->'); if (parts.length !== 2) continue;
+                let lhs = parts[0].trim(); if (!start) start = lhs;
+                if (!rules[lhs]) rules[lhs] = [];
+                let rhss = parts[1].split('|');
+                for (let rhs of rhss) rules[lhs].push(rhs.trim().split(/\s+/).filter(s => s));
+            }
+            return { rules, start };
+        }
+
+        function findNodeById(node, id) {
+            if (node.id === id) return node;
+            if (node.children) { for (let child of node.children) { let res = findNodeById(child, id); if (res) return res; } }
+            return null;
+        }
+
+        function searchDerivation(grammar, start, targetStr, mode = "left", maxResults = 1) {
+            let targetTokens = targetStr.trim().split(/\s+/).filter(s => s);
+            let idCounter = 1, root = { id: 0, sym: start, children: [] };
+            let queue = [{ leaves: [root], steps: [[start]], tree: root }], results = [], iters = 0;
+
+            while (queue.length > 0 && iters < 8000) {
+                iters++; let curr = queue.shift();
+                let targetIdx = -1;
+                if (mode === 'left' || mode === 'ambiguity') {
+                    for (let i = 0; i < curr.leaves.length; i++) { if (grammar.rules[curr.leaves[i].sym]) { targetIdx = i; break; } }
+                } else {
+                    for (let i = curr.leaves.length - 1; i >= 0; i--) { if (grammar.rules[curr.leaves[i].sym]) { targetIdx = i; break; } }
+                }
+
+                if (targetIdx === -1) {
+                    if (curr.leaves.map(n => n.sym).join('') === targetTokens.join('')) {
+                        results.push(curr); if (results.length >= maxResults) return results;
+                    }
+                    continue;
+                }
+
+                if (curr.leaves.filter(n => !grammar.rules[n.sym]).length > targetTokens.length + 2) continue;
+                if (curr.steps.length > 12) continue;
+
+                let leafToExpand = curr.leaves[targetIdx], prods = grammar.rules[leafToExpand.sym];
+                for (let prod of prods) {
+                    let clonedRoot = JSON.parse(JSON.stringify(curr.tree));
+                    let clonedLeaf = findNodeById(clonedRoot, leafToExpand.id);
+                    let newChildren = [], newLeaves = [];
+
+                    for (let i = 0; i < curr.leaves.length; i++) {
+                        if (i === targetIdx) {
+                            for (let sym of prod) { let newNode = { id: idCounter++, sym: sym, children: [] }; newChildren.push(newNode); newLeaves.push(newNode); }
+                        } else {
+                            newLeaves.push(findNodeById(clonedRoot, curr.leaves[i].id));
+                        }
+                    }
+                    clonedLeaf.children = newChildren;
+                    queue.push({ leaves: newLeaves, steps: [...curr.steps, newLeaves.map(n => n.sym)], tree: clonedRoot });
+                }
+            }
+            return results;
+        }
+
+        // 构建控制台文本树
+        function buildTextTree(node, prefix = "", isLeft = true, isRoot = true) {
+            if (!node) return "";
+            let result = "";
+            let nodeName = (node.children && node.children.length > 0) ? `[${node.sym}]` : `<span class="highlight">${node.sym.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>`;
+            if (isRoot) { result += nodeName + "\n"; } else { result += prefix + (isLeft ? "├── " : "└── ") + nodeName + "\n"; }
+            if (node.children) {
+                for (let i = 0; i < node.children.length; i++) {
+                    let child = node.children[i]; let isLast = (i === node.children.length - 1);
+                    let newPrefix = prefix + (isRoot ? "" : (isLeft ? "│   " : "    "));
+                    result += buildTextTree(child, newPrefix, !isLast, false);
+                }
+            }
+            return result;
+        }
+
+        // 构建 CSS HTML树
+        function buildCSSTree(node) {
+            if (!node) return "";
+            let symHtml = node.sym.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            if (!node.children || node.children.length === 0) return `<li><span>${symHtml}</span></li>`;
+            let childrenHtml = node.children.map(c => buildCSSTree(c)).join('');
+            return `<li><span>${symHtml}</span><ul>${childrenHtml}</ul></li>`;
+        }
+
+        /* ------------------ Page 2 功能 A：通用推导 ------------------ */
+        function runGeneralDerivation(mode) {
+            let gramText = document.getElementById('gramInput').value;
+            let target = document.getElementById('targetStr').value;
+            let grammar = parseGrammar(gramText);
+            if (!grammar.start) { alert("文法解析失败！"); return; }
+
+            let res = searchDerivation(grammar, grammar.start, target, mode, 1);
+            document.getElementById('genDerivOutput').style.display = 'block';
+
+            if (res.length > 0) {
+                document.getElementById('genDerivSteps').innerHTML = res[0].steps.map(arr => arr.join(" ")).join("  =>  ");
+                document.getElementById('genConsoleTree').innerHTML = buildTextTree(res[0].tree);
+            } else {
+                document.getElementById('genDerivSteps').innerHTML = `<span style="color:red">在给定深度内未找到推导路径或非该文法句子。</span>`;
+                document.getElementById('genConsoleTree').innerHTML = "";
+            }
+        }
+
+        /* ------------------ Page 2 功能 B：系统自然语言提问文法推导 ------------------ */
+        function getNLDerivationSteps(root, mode) {
+            let steps = [];
+            let currentLeaves = [root];
+            steps.push([...currentLeaves]);
+
+            while (true) {
+                let targetIdx = -1;
+                // 寻找非终结符（即带有 children 且数量大于0的节点）
+                if (mode === 'left') {
+                    for (let i = 0; i < currentLeaves.length; i++) { if (currentLeaves[i].children && currentLeaves[i].children.length > 0) { targetIdx = i; break; } }
+                } else {
+                    for (let i = currentLeaves.length - 1; i >= 0; i--) { if (currentLeaves[i].children && currentLeaves[i].children.length > 0) { targetIdx = i; break; } }
+                }
+
+                if (targetIdx === -1) break; // 全是终结符
+
+                let targetNode = currentLeaves[targetIdx];
+                let newLeaves = [];
+                for (let i = 0; i < currentLeaves.length; i++) {
+                    if (i === targetIdx) newLeaves.push(...targetNode.children);
+                    else newLeaves.push(currentLeaves[i]);
+                }
+                currentLeaves = newLeaves;
+                steps.push([...currentLeaves]);
+            }
+            return steps.map(leaves => leaves.map(n => n.sym).join(" <b>&</b> "));
+        }
+
+        function runNLDerivation(mode) {
+            const input = document.getElementById('nlQuestionInput').value;
+            const normalizedInput = normalizeText(input);
+            let extractedSubjects = [], extractedRels = [], extractedDerivs = [], subjectHits = {}, matchedSubjectName = "其他相关知识";
+
+            if (!knowledgeBase || Object.keys(dict.subject).length === 0) {
+                alert("知识库暂未加载，将使用本地默认模式解析。");
+            }
+
+            for (const [subj, words] of Object.entries(dict.subject)) {
+                words.forEach(w => { if (normalizedInput.includes(normalizeText(w))) { extractedSubjects.push(w); subjectHits[subj] = (subjectHits[subj] || 0) + 1; } });
+            }
+            const bestSubject = Object.entries(subjectHits).sort((a, b) => b[1] - a[1])[0];
+            if (bestSubject) matchedSubjectName = bestSubject[0];
+
+            dict.relation.forEach(w => { if (normalizedInput.includes(normalizeText(w))) extractedRels.push(w); });
+            dict.derivation.forEach(w => { if (normalizedInput.includes(normalizeText(w))) extractedDerivs.push(w); });
+
+            extractedSubjects = Array.from(new Set(extractedSubjects));
+            if (extractedSubjects.length === 0) {
+                alert("未能从句子中提取到任何专业词汇！请输入如 '词法分析和语法分析' ");
+                return;
+            }
+
+            // 根据分析构建特定文法的抽象语法树结构
+            const { categoryName } = resolveCategory(extractedSubjects, extractedRels, extractedDerivs);
+            let categoryTerminals = [];
+            if (categoryName === "<对于单个词的解释>") categoryTerminals = ["count=1"];
+            else if (categoryName === "<词与词的推导>") categoryTerminals = ["count>=2", `"${extractedDerivs[0] || '推导'}"`];
+            else categoryTerminals = ["count>=2", `"${extractedRels[0] || '关系'}"`];
+
+            let AST = {
+                sym: 'S', children: [
+                    {
+                        sym: '<Question>', children: [
+                            {
+                                sym: '<类别>', children: [
+                                    { sym: categoryName, children: categoryTerminals.map(t => ({ sym: t, children: [] })) }
+                                ]
+                            },
+                            {
+                                sym: '<学科>', children: [
+                                    { sym: `<${matchedSubjectName}>`, children: extractedSubjects.map(t => ({ sym: `"${t}"`, children: [] })) }
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            };
+
+            document.getElementById('nlDerivOutput').style.display = 'block';
+            let stepsStr = getNLDerivationSteps(AST, mode);
+            document.getElementById('nlSteps').innerHTML = stepsStr.join("<br> => ");
+            document.getElementById('nlTextTree').innerHTML = buildTextTree(AST);
+            document.getElementById('nlCssTree').innerHTML = `<ul>${buildCSSTree(AST)}</ul>`;
+        }
+
+        /* ------------------ Page 3: 二义性检测 ------------------ */
+        function detectAmbiguity() {
+            let gramText = document.getElementById('ambiGrammar').value;
+            let target = document.getElementById('ambiTarget').value;
+            let grammar = parseGrammar(gramText);
+            document.getElementById('ambiOutput').style.display = 'block';
+
+            let res = searchDerivation(grammar, grammar.start, target, 'ambiguity', 2);
+            let alertBox = document.getElementById('ambiAlert');
+            let treesDiv = document.getElementById('ambiTreesDiv');
+
+            if (res.length >= 2) {
+                alertBox.style.backgroundColor = "#fadbd8"; alertBox.style.color = "#c0392b";
+                alertBox.innerText = `⚠️ 检测成功：文法存在二义性！找到两棵最左推导语法树。`;
+                treesDiv.style.display = 'flex';
+                document.getElementById('ambiSteps1').innerText = "推导A: " + res[0].steps.map(s => s.join(" ")).join(" => ");
+                document.getElementById('ambiTree1').innerHTML = buildTextTree(res[0].tree);
+                document.getElementById('ambiSteps2').innerText = "推导B: " + res[1].steps.map(s => s.join(" ")).join(" => ");
+                document.getElementById('ambiTree2').innerHTML = buildTextTree(res[1].tree);
+            } else {
+                alertBox.style.backgroundColor = res.length === 1 ? "#d4efdf" : "#fcf3cf";
+                alertBox.style.color = res.length === 1 ? "#27ae60" : "#8a6d3b";
+                alertBox.innerText = res.length === 1 ? `✅ 未检测到二义性。` : `❌ 无法生成该句子。`;
+                treesDiv.style.display = 'none';
+            }
+        }
+
+        /* ------------------ Page 4: 知识点速查（接入 course_cat.json） ------------------ */
+        let page4Items = [];
+        let page4Filters = { subject: '全部', section: '全部' };
+        let page4ToolbarReady = false;
+
+        function buildPage4ItemsFromKnowledge(kb) {
+            const items = [];
+            for (const [subject, sections] of Object.entries(kb || {})) {
+                for (const [sectionName, entries] of Object.entries(sections || {})) {
+                    if (!entries || typeof entries !== 'object') continue;
+                    for (const [keyword, knowledge] of Object.entries(entries)) {
+                        if (typeof knowledge !== 'string') continue;
+                        items.push({
+                            subject,
+                            section: sectionName,
+                            keyword,
+                            knowledge,
+                            tags: [subject, sectionName, keyword.includes('-') ? '词对' : '概念']
+                        });
+                    }
+                }
+            }
+            return items;
+        }
+
+        function renderPage4Toolbar(items) {
+            const toolbar = document.getElementById('kbToolbar');
+            if (!toolbar || page4ToolbarReady) return;
+
+            const subjects = ['全部', ...Array.from(new Set(items.map(i => i.subject)))];
+            const sections = ['全部', ...Array.from(new Set(items.map(i => i.section)))];
+
+            const buildButtons = (type, values) => values.map(v => {
+                const active = page4Filters[type] === v ? 'active' : '';
+                return `<button class="kb-filter-btn ${active}" onclick="setKBFilter('${type}', '${v.replace(/'/g, "\\'")}')">${v}</button>`;
+            }).join('');
+
+            toolbar.innerHTML = `<div>${buildButtons('subject', subjects)}</div><div>${buildButtons('section', sections)}</div>`;
+            page4ToolbarReady = true;
+        }
+
+        function setKBFilter(type, value) {
+            page4Filters[type] = value;
+            page4ToolbarReady = false;
+            filterKB();
+        }
+
+        function groupBySubjectAndSection(items) {
+            const grouped = {};
+            items.forEach(item => {
+                if (!grouped[item.subject]) grouped[item.subject] = {};
+                if (!grouped[item.subject][item.section]) grouped[item.subject][item.section] = [];
+                grouped[item.subject][item.section].push(item);
+            });
+            return grouped;
+        }
+
+        async function filterKB() {
+            const grid = document.getElementById('kbGrid');
+            const meta = document.getElementById('kbMeta');
+            const keyword = normalizeText(document.getElementById('kbSearch').value || '');
+
+            try {
+                await loadKnowledgeBase();
+            } catch (error) {
+                grid.innerHTML = `<div class="kb-empty">知识库加载失败：${error.message}</div>`;
+                if (meta) meta.innerText = '无法加载 course_cat.json';
+                return;
+            }
+
+            if (page4Items.length === 0) {
+                page4Items = buildPage4ItemsFromKnowledge(knowledgeBase);
+            }
+            renderPage4Toolbar(page4Items);
+
+            const filtered = page4Items.filter(item => {
+                const matchSearch = !keyword || normalizeText(item.keyword).includes(keyword) || normalizeText(item.knowledge).includes(keyword) || normalizeText(item.subject).includes(keyword) || normalizeText(item.section).includes(keyword);
+                const matchSubject = page4Filters.subject === '全部' || item.subject === page4Filters.subject;
+                const matchSection = page4Filters.section === '全部' || item.section === page4Filters.section;
+                return matchSearch && matchSubject && matchSection;
+            });
+
+            if (meta) {
+                meta.innerText = `当前展示 ${filtered.length} / ${page4Items.length} 条 | 学科: ${page4Filters.subject} | 标签: ${page4Filters.section}`;
+            }
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `<div class="kb-empty">没有匹配到结果，尝试更换关键字或重置筛选。</div>`;
+                return;
+            }
+
+            const grouped = groupBySubjectAndSection(filtered);
+            grid.innerHTML = Object.entries(grouped).map(([subject, sections]) => {
+                const sectionHtml = Object.entries(sections).map(([sectionName, entries]) => {
+                    const cards = entries.map(item => `
+                        <div class="kb-card">
+                            <div class="kb-tag">${item.subject}</div>
+                            <div class="kb-tag">${item.section}</div>
+                            <div class="kb-title">${item.keyword}</div>
+                            <div class="kb-desc">${item.knowledge}</div>
+                        </div>
+                    `).join('');
+                    return `<div class="kb-section-title">${sectionName}（${entries.length}）</div><div class="kb-grid">${cards}</div>`;
+                }).join('');
+                return `<div class="kb-subject-block"><div class="kb-subject-title">${subject}</div>${sectionHtml}</div>`;
+            }).join('');
+
+            // 刷新按钮激活态
+            page4ToolbarReady = false;
+            renderPage4Toolbar(page4Items);
+        }
+
+        window.addEventListener('load', () => {
+            filterKB();
+        });
+    </script>
+</body>
+
+</html>
