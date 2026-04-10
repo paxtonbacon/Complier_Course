@@ -382,3 +382,134 @@ pre.console-tree {
     border-radius: 8px;
     background: #f9fcff;
 }
+
+
+/* ==================== 第 8 页: CSS 横向树与终端样式 ==================== */
+/* 语雀风格文本框 */
+.yuque-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    background-color: #f8f9fa;
+    border: 1px solid #dcdfe6;
+    border-radius: 6px;
+    padding: 15px;
+    font-family: 'Consolas', monospace;
+    font-size: 16px;
+    line-height: 1.5;
+    color: #2c3e50;
+    resize: vertical;
+    transition: 0.3s;
+}
+
+.yuque-textarea:focus {
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+    outline: none;
+}
+
+.btn-primary {
+    background-color: #3498db;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+/* DFA 纯 CSS 横向直连拓扑树 */
+.dfa-h-tree,
+.dfa-h-tree ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.dfa-h-tree ul {
+    padding-left: 90px;
+    /* 控制边连接线长度 */
+    border-left: 2px solid #7f8c8d;
+    /* 垂直主干线 */
+    margin-left: 25px;
+    /* 对齐父节点中心 */
+    position: relative;
+}
+
+.dfa-h-tree li {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+/* 水平横线 (带箭头) */
+.dfa-h-tree ul li::before {
+    content: '';
+    position: absolute;
+    left: -90px;
+    top: 50%;
+    width: 90px;
+    border-top: 2px solid #7f8c8d;
+    z-index: 1;
+}
+
+.dfa-h-tree ul li::after {
+    content: '';
+    position: absolute;
+    left: -5px;
+    top: 50%;
+    transform: translateY(-50%);
+    border-width: 5px 0 5px 8px;
+    border-style: solid;
+    border-color: transparent transparent transparent #7f8c8d;
+    z-index: 2;
+}
+
+/* 线上的转移条件字符 */
+.dfa-h-tree .edge {
+    position: absolute;
+    left: -65px;
+    top: 50%;
+    transform: translateY(-130%);
+    font-size: 12px;
+    color: #c0392b;
+    font-weight: bold;
+    background: #fff;
+    padding: 0 4px;
+    z-index: 3;
+}
+
+/* 圆形状态节点 */
+.dfa-h-tree .node {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    border: 2px solid #2c3e50;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #ecf0f1;
+    font-family: monospace;
+    font-size: 13px;
+    font-weight: bold;
+    position: relative;
+    z-index: 4;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 终态同心圆 */
+.dfa-h-tree .node.accept {
+    border: 4px double #27ae60;
+    background: #e8f8f5;
+}
+
+/* 动态高亮 */
+.dfa-h-tree .node.active {
+    background: #f1c40f;
+    border-color: #d35400;
+    transform: scale(1.15);
+    box-shadow: 0 0 15px rgba(241, 196, 15, 0.8);
+}

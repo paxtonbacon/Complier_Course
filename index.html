@@ -20,6 +20,8 @@
         <button class="nav-btn" onclick="switchTab('page5')">5. 句柄与规约分析</button>
         <button class="nav-btn" onclick="switchTab('page6')">6. 乔姆斯基文法分类</button>
         <button class="nav-btn" onclick="switchTab('page7')">7. 词法切分基础</button>
+        <button class="nav-btn" onclick="switchTab('page8')">8. 基于 DFA 的词法分析</button>
+        
     </nav>
 
     <div class="container">
@@ -332,6 +334,103 @@
                                 </tr>
                             </thead>
                             <tbody id="p7_tokenTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= 第 8 页: 基于 DFA 的词法分析 ================= -->
+        <div id="page8" class="page-section">
+            <h1>基于 DFA 的严格词法分析引擎</h1>
+            <p style="text-align: center; color: #666;">严格基于状态机的逐字符扫描，支持最长匹配、超前搜索与指针回退。</p>
+        
+            <!-- 块 1: DFA 完整定义与状态图绘制 -->
+            <div class="panel" style="border-left-color: #2980b9; background: #eaf2f8;">
+                <h3 style="color: #34495e;">1. DFA状态图完整演示（包括状态，字符，转移） (Code Input)</h3>
+                <!-- 块 1: DFA 完整定义与状态转移图 (Terminal 风格) -->
+                <div class="panel" style="border-left-color: #2c3e50; background: #1e1e1e; color: #ecf0f1;">
+<pre
+        style="font-family: 'Consolas', 'Courier New', monospace; font-size: 14px; line-height: 1.6; margin: 0; padding: 15px; overflow-x: auto;">
+<span style="color: #66d9ef;">[DFA 5-Tuple Definition M = (K, Σ, f, S, Z)]</span>
+<span style="color: #f92672;">K (States)</span>  : { q0, q_id, q_int, q_dot, q_float, q_op1, q_slash, q_and, q_or, q_cmt, q_delim, q_err }
+<span style="color: #f92672;">Σ (Alphabet)</span>: [a-zA-Z_], [0-9], [+ - * / % = < > ! & |], [ ( ) [ ] { } ; . ], [\s \t \n]
+<span style="color: #f92672;">S (Start)</span>   : <span style="color: #3498db;">q0</span>
+<span style="color: #f92672;">Z (Accept)</span>  : { q_id<span style="color: #a6e22e;">(⊙)</span>, q_int<span style="color: #a6e22e;">(⊙)</span>, q_float<span style="color: #a6e22e;">(⊙)</span>, q_op1<span style="color: #a6e22e;">(⊙)</span>, q_slash<span style="color: #a6e22e;">(⊙)</span>, q_delim<span style="color: #a6e22e;">(⊙)</span> } 
+                <span style="color: #75715e;">* ⊙ denotes Accept States (requires rollback if not exact match)</span>
+
+<span style="color: #66d9ef;">[Transition Function f: State x Input -> State]</span>
+<span style="color: #3498db; font-weight: bold;">q0</span> (Start)
+    ├── <span style="color: #e6db74;">[a-zA-Z_]</span> ─────────➔ <span style="color: #3498db;">q_id</span> ────(<span style="color: #fd971f;">loop: [a-zA-Z0-9_]</span>) ──➔ <span style="color: #a6e22e;">⊙ Accept</span> (KW/ID)
+    │
+    ├── <span style="color: #e6db74;">[0-9]</span> ─────────────➔ <span style="color: #3498db;">q_int</span> ───(<span style="color: #fd971f;">loop: [0-9]</span>) ─────────➔ <span style="color: #a6e22e;">⊙ Accept</span> (Int NUM)
+    │                         └── <span style="color: #e6db74;">[.]</span> ──➔ <span style="color: #3498db;">q_dot</span> ──(<span style="color: #e6db74;">[0-9]</span>)──➔ <span style="color: #3498db;">q_float</span> ──(<span style="color: #fd971f;">loop: [0-9]</span>) ➔ <span style="color: #a6e22e;">⊙ Accept</span> (Float NUM)
+    │
+    ├── <span style="color: #e6db74;">[+ - * % = < > !]</span> ─➔ <span style="color: #3498db;">q_op1</span> ───(<span style="color: #e6db74;">[=]</span>)────────────────➔ <span style="color: #a6e22e;">⊙ Accept</span> (Compound OP, e.g., +=, ==)
+    │                         └── <span style="color: #fd971f;">(other)</span> ──────────────➔ <span style="color: #a6e22e;">⊙ Accept</span> (Single OP, Rollback)
+    │
+    ├── <span style="color: #e6db74;">[/]</span> ───────────────➔ <span style="color: #3498db;">q_slash</span> ─(<span style="color: #e6db74;">[/]</span>)──➔ <span style="color: #3498db;">q_cmt</span> ──(<span style="color: #fd971f;">loop: [^\n]</span>) ──➔ <span style="color: #3498db;">q0</span> (Skip Comment)
+    │                         └── <span style="color: #fd971f;">(other)</span> ──────────────➔ <span style="color: #a6e22e;">⊙ Accept</span> (Divide OP, Rollback)
+    │
+    ├── <span style="color: #e6db74;">[&]</span> ───────────────➔ <span style="color: #3498db;">q_and</span> ───(<span style="color: #e6db74;">[&]</span>)────────────────➔ <span style="color: #a6e22e;">⊙ Accept</span> (Logical AND: &&)
+    │
+    ├── <span style="color: #e6db74;">[|]</span> ───────────────➔ <span style="color: #3498db;">q_or</span> ────(<span style="color: #e6db74;">[|]</span>)────────────────➔ <span style="color: #a6e22e;">⊙ Accept</span> (Logical OR: ||)
+    │
+    └── <span style="color: #e6db74;">[ ( ) [ ] { } ; . ]</span>➔ <span style="color: #3498db;">q_delim</span> ─────────────────────➔ <span style="color: #a6e22e;">⊙ Accept</span> (Delimiter)
+</pre>
+                </div>
+            </div>
+        
+            <!-- 块 2: 语雀风格代码输入框 -->
+            <div class="panel" style="border-left-color: #34495e; background: #fff;">
+                <h3 style="color: #34495e;">2. 源代码输入 (Code Input)</h3>
+                <textarea id="p8_codeInput" class="yuque-textarea" rows="8">
+int count = 10;
+float pi = 3.14;
+if (count >= 5) {
+    count += 1;
+}</textarea>
+                <button onclick="startDfaAnalysis()" class="btn-primary" style="margin-top: 10px;">执行 DFA 词法扫描</button>
+            </div>
+        
+            <!-- 块 3: 状态监听监控区 -->
+            <div class="panel" style="border-left-color: #8e44ad; background: #f9ebff;">
+                <h3 style="color: #8e44ad;">3. 词法分析实时探测器</h3>
+                <div
+                    style="display: flex; gap: 30px; align-items: center; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid #e0b0ff;">
+                    <div style="font-size: 16px; font-family: monospace;">当前读取字符: <strong id="p8_dynChar"
+                            style="color: #e74c3c; font-size: 24px; background: #eee; padding: 0 8px; border-radius: 4px;">-</strong>
+                    </div>
+                    <div style="font-size: 16px; font-family: monospace;">所在状态: <strong id="p8_dynState"
+                            style="color: #2980b9; font-size: 24px;">q0</strong></div>
+                    <div style="font-size: 16px; font-family: monospace;">缓冲区(Buffer): <strong id="p8_dynBuffer"
+                            style="background: #2ecc71; color: #fff; padding: 4px 12px; border-radius: 4px; font-size: 20px;">
+                        </strong></div>
+                </div>
+            </div>
+        
+            <!-- 块 4: 命令行结果 & Token 列表 -->
+            <div style="display: flex; gap: 20px; margin-top: 20px;">
+                <!-- 终端风格动态 DFA 树 -->
+                <div class="panel" style="flex: 1; border-left-color: #2c3e50; background: #1e1e1e;">
+                    <h3 style="color: #ecf0f1;">4. 动态延伸 DFA 树 (CLI Tree)</h3>
+                    <pre id="p8_cliTree"
+                        style="background: #1e1e1e; color: #a6e22e; font-family: 'Consolas', monospace; font-size: 14px; height: 350px; overflow-y: auto; margin: 0; border: none; white-space: pre-wrap;">等待启动扫描...</pre>
+                </div>
+        
+                <!-- Token 分析列表 -->
+                <div class="panel" style="flex: 1; border-left-color: #27ae60;">
+                    <h3 style="color: #27ae60;">5.分析出局 Token 序列表</h3>
+                    <div style="overflow-y: auto; height: 350px; background: #fff; border: 1px solid #ddd;">
+                        <table style="width:100%; border-collapse: collapse; font-family: monospace; font-size: 14px;">
+                            <thead style="position: sticky; top: 0; background: #f2f3f4; z-index: 10;">
+                                <tr style="border-bottom:2px solid #bdc3c7;">
+                                    <th style="padding:10px; text-align: left;">单词 (Lexeme)</th>
+                                    <th style="padding:10px; text-align: left;">类别</th>
+                                    <th style="padding:10px; text-align: left;">二元组</th>
+                                </tr>
+                            </thead>
+                            <tbody id="p8_tokenTableBody"></tbody>
                         </table>
                     </div>
                 </div>
@@ -1315,6 +1414,191 @@
         function getBadgeColor(code) {
             const colors = { 'KW': '#e74c3c', 'ID': '#3498db', 'NUM': '#f39c12', 'OP': '#9b59b6', 'SEP': '#2ecc71', 'ERR': '#7f8c8d' };
             return colors[code] || '#000';
+        }
+
+        /* ==================== 第 8 页: DFA 引擎与 CLI 树渲染 ==================== */
+        let lexerTimer = null;
+
+        const P8_KW = ["if", "else", "while", "for", "break", "continue", "return", "int", "float", "bool", "string", "void", "class", "true", "false"];
+        const P8_OP1 = ['+', '-', '*', '%', '=', '<', '>', '!'];
+        const P8_DELIM = ['(', ')', '[', ']', '{', '}', ';', '.'];
+
+        const isAlpha = c => /[a-zA-Z_]/.test(c);
+        const isDigit = c => /[0-9]/.test(c);
+        const isSpace = c => /\s/.test(c);
+
+        function startDfaAnalysis() {
+            clearInterval(lexerTimer);
+            let code = document.getElementById('p8_codeInput').value + "\n";
+            let tbody = document.getElementById('p8_tokenTableBody');
+            let cliTree = document.getElementById('p8_cliTree');
+
+            tbody.innerHTML = "";
+            cliTree.innerHTML = "> 启动 DFA 词法分析内核...\n";
+            document.querySelectorAll('.dfa-h-tree .node').forEach(n => n.classList.remove('active'));
+
+            let pos = 0;
+            let state = "q0";
+            let buffer = "";
+            let treeDepth = 0; // 记录 CLI 树的当前深度
+
+            // Token 表格输出
+            const emitToken = (lexeme, type, codeName) => {
+                let color = { 'KW': '#e74c3c', 'ID': '#3498db', 'NUM': '#e67e22', 'OP': '#9b59b6', 'SEP': '#2ecc71', 'ERR': '#95a5a6' }[codeName] || '#000';
+                tbody.innerHTML += `<tr>
+        <td style="padding:8px; font-weight:bold; border-bottom:1px solid #eee;">${lexeme}</td>
+        <td style="padding:8px; border-bottom:1px solid #eee;">${type}</td>
+        <td style="padding:8px; color:${color}; font-weight:bold; border-bottom:1px solid #eee;">&lt;${codeName}, ${lexeme}&gt;</td>
+    </tr>`;
+                tbody.parentElement.parentElement.scrollTop = tbody.parentElement.parentElement.scrollHeight;
+            };
+
+            // 绘制终端风格 CLI Tree
+            const drawCliTree = (c, nextState, isRollback, isEmit, emitInfo) => {
+                let displayC = c === '\n' ? '\\n' : (c === ' ' ? '␣' : c);
+
+                if (state === "q0" && treeDepth === 0) {
+                    cliTree.innerHTML += `\n<span style="color:#66d9ef">[Start]</span> q0\n`;
+                }
+
+                let indent = "     ".repeat(treeDepth);
+                if (isEmit) {
+                    if (isRollback) {
+                        cliTree.innerHTML += `${indent}└──(${displayC})➔ ⊙ <span style="color:#f92672">回退拦断</span>, 取出 Token: <span style="color:#e6db74">${emitInfo}</span>\n`;
+                    } else {
+                        cliTree.innerHTML += `${indent}└──(${displayC})➔ ⊙ <span style="color:#a6e22e">直接接收</span>, 取出 Token: <span style="color:#e6db74">${emitInfo}</span>\n`;
+                    }
+                    treeDepth = 0; // 重置深度
+                } else {
+                    cliTree.innerHTML += `${indent}└──(${displayC})➔ ${nextState}\n`;
+                    treeDepth++;
+                }
+                cliTree.scrollTop = cliTree.scrollHeight;
+            };
+
+            // 执行状态机时钟
+            lexerTimer = setInterval(() => {
+                if (pos >= code.length) {
+                    clearInterval(lexerTimer);
+                    document.getElementById('p8_dynChar').innerText = "EOF";
+                    cliTree.innerHTML += `\n> 扫描结束 (EOF).`;
+                    return;
+                }
+
+                let c = code[pos];
+                let nextState = state;
+                let rollback = false;
+                let emit = false;
+                let emitInfo = "";
+
+                switch (state) {
+                    case "q0":
+                        if (isSpace(c)) {
+                            nextState = "q0";
+                            if (c === '\n' || c === ' ') { drawCliTree(c, "q0 (跳过)", false, false, ""); treeDepth = 0; }
+                        }
+                        else if (isAlpha(c)) { nextState = "q_id"; buffer += c; }
+                        else if (isDigit(c)) { nextState = "q_int"; buffer += c; }
+                        else if (c === '/') { nextState = "q_slash"; buffer += c; }
+                        else if (P8_OP1.includes(c)) { nextState = "q_op1"; buffer += c; }
+                        else if (c === '&') { nextState = "q_and"; buffer += c; }
+                        else if (P8_DELIM.includes(c)) {
+                            nextState = "q_delim"; buffer += c;
+                            emitToken(buffer, "界符", "SEP"); emitInfo = `&lt;SEP, ${buffer}&gt;`;
+                            buffer = ""; emit = true; nextState = "q0";
+                        }
+                        else {
+                            emitToken(c, "非法字符", "ERR"); emitInfo = `&lt;ERR, ${c}&gt;`;
+                            emit = true; nextState = "q0";
+                        }
+                        break;
+
+                    case "q_id":
+                        if (isAlpha(c) || isDigit(c)) { buffer += c; }
+                        else {
+                            let isKw = P8_KW.includes(buffer);
+                            emitToken(buffer, isKw ? "关键字" : "标识符", isKw ? "KW" : "ID");
+                            emitInfo = `&lt;${isKw ? 'KW' : 'ID'}, ${buffer}&gt;`;
+                            buffer = ""; nextState = "q0"; rollback = true; emit = true;
+                        }
+                        break;
+
+                    case "q_int":
+                        if (isDigit(c)) { buffer += c; }
+                        else if (c === '.') { nextState = "q_dot"; buffer += c; }
+                        else {
+                            emitToken(buffer, "常数", "NUM"); emitInfo = `&lt;NUM, ${buffer}&gt;`;
+                            buffer = ""; nextState = "q0"; rollback = true; emit = true;
+                        }
+                        break;
+
+                    case "q_dot":
+                        if (isDigit(c)) { nextState = "q_float"; buffer += c; }
+                        else {
+                            emitToken(buffer, "非法浮点", "ERR"); emitInfo = `&lt;ERR, ${buffer}&gt;`;
+                            buffer = ""; nextState = "q0"; rollback = true; emit = true;
+                        }
+                        break;
+
+                    case "q_float":
+                        if (isDigit(c)) { buffer += c; }
+                        else {
+                            emitToken(buffer, "浮点常数", "NUM"); emitInfo = `&lt;NUM, ${buffer}&gt;`;
+                            buffer = ""; nextState = "q0"; rollback = true; emit = true;
+                        }
+                        break;
+
+                    case "q_op1":
+                        if (c === '=') {
+                            buffer += c; emitToken(buffer, "复合关系", "OP"); emitInfo = `&lt;OP, ${buffer}&gt;`;
+                            buffer = ""; nextState = "q0"; emit = true;
+                        } else {
+                            emitToken(buffer, "算数/关系", "OP"); emitInfo = `&lt;OP, ${buffer}&gt;`;
+                            buffer = ""; nextState = "q0"; rollback = true; emit = true;
+                        }
+                        break;
+
+                    case "q_slash":
+                        if (c === '/') { nextState = "q_cmt"; buffer += c; }
+                        else {
+                            emitToken(buffer, "除法操作", "OP"); emitInfo = `&lt;OP, ${buffer}&gt;`;
+                            buffer = ""; nextState = "q0"; rollback = true; emit = true;
+                        }
+                        break;
+
+                    case "q_cmt":
+                        if (c === '\n') { buffer = ""; nextState = "q0"; treeDepth = 0; } // 跳过注释
+                        else { buffer += c; }
+                        break;
+
+                    case "q_and":
+                        if (c === '&') {
+                            buffer += c; emitToken(buffer, "逻辑与", "OP"); emitInfo = `&lt;OP, ${buffer}&gt;`;
+                            buffer = ""; nextState = "q0"; emit = true;
+                        } else {
+                            emitToken(buffer, "非法操作", "ERR"); emitInfo = `&lt;ERR, ${buffer}&gt;`;
+                            buffer = ""; nextState = "q0"; rollback = true; emit = true;
+                        }
+                        break;
+                }
+
+                // GUI 面板更新与图高亮
+                if (!(state === "q0" && isSpace(c))) {
+                    drawCliTree(c, nextState, rollback, emit, emitInfo);
+                }
+
+                document.getElementById('p8_dynChar').innerText = c === "\n" ? "\\n" : (c === " " ? "[空格]" : c);
+                document.getElementById('p8_dynState').innerText = nextState;
+                document.getElementById('p8_dynBuffer').innerText = buffer || " ";
+
+                document.querySelectorAll('.dfa-h-tree .node').forEach(n => n.classList.remove('active'));
+                let domNode = document.getElementById(`n-${nextState}`);
+                if (domNode) domNode.classList.add('active');
+
+                state = nextState;
+                if (!rollback) pos++;
+
+            }, 150); // 间隔150ms，产生行云流水的终端树生成效果
         }
 
         window.addEventListener('load', () => {
